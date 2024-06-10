@@ -16,7 +16,7 @@
     "e-commerce"
   ],
   "author": "Ibrahim Ahmed",
-  "license": "GNU",
+  "license": "GPL-3.0-only",
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.5",
