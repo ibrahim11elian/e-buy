@@ -1,18 +1,28 @@
 import express, { Request, Response, NextFunction } from "express";
 import dotenv from "dotenv";
+import errorHandler from "./controllers/error";
+import AppError from "./utils/error";
+import { userRouter } from "./routes";
 
 dotenv.config();
 const app: express.Application = express();
+
+// Body parser
+app.use(express.json({ limit: "10kb" }));
+app.use(express.urlencoded({ extended: false }));
 
 app.get("/", (req: Request, res: Response) => {
   res.send("<h1>Welcome To E-Buy API</h1>");
 });
 
+app.use("/api/v1/users", userRouter);
+
 // NOT FOUND
-app.all("*", (_, res: Response, next: NextFunction) => {
-  res.status(404).json({
-    message: "Route Not Found",
-  });
+app.all("*", (req: Request, res: Response, next: NextFunction) => {
+  next(new AppError("Route Not Found", 404));
 });
+
+// Global error handler
+app.use(errorHandler);
 
 export default app;
