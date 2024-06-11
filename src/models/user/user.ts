@@ -1,10 +1,39 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable no-undef */
 import crypto from "crypto";
-import mongoose, { CallbackError } from "mongoose";
+import mongoose, { Document, CallbackError, Model, Schema } from "mongoose";
 import validator from "validator";
 import bcrypt from "bcryptjs";
 
-const userSchema = new mongoose.Schema(
+// Define IUser interface extending Document
+interface IUser {
+  username: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  password: string;
+  role: "user" | "admin";
+  profile?: string;
+  address?: string;
+  active: boolean;
+  loginAttempts?: number;
+  isVerified: boolean;
+  loginExpires?: Date;
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
+  changedPasswordTime: Date;
+  lastLoginAttempt: Date;
+  emailVerificationToken: string;
+  emailVerificationExpires: Date;
+  comparePassword: (candidatePassword: string) => Promise<boolean>;
+  checkChangedPassword: (JWTTime: number) => boolean;
+  generatePasswordReset: () => string;
+  checkLogin: () => boolean;
+  save: () => Promise<IUser>;
+}
+
+const userSchema: Schema<IUser> = new mongoose.Schema(
   {
     username: {
       type: String,
@@ -89,98 +118,91 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: {
+      virtuals: true,
+    },
+    toObject: {
+      virtuals: true,
+    },
   },
 );
 
+// Middleware to hash password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
 
   try {
     const saltRounds = parseInt(process.env.HASH_SALT as string, 10) || 10;
     this.password = await bcrypt.hash(this.password, saltRounds);
-
     next();
   } catch (err) {
     next(err as CallbackError);
   }
 });
 
+// Middleware to update changedPasswordTime before saving
 userSchema.pre("save", function (next) {
   if (!this.isModified("password") || this.isNew) return next();
 
-  this.changedPasswordTime = (Date.now() - 1000) as unknown as Date;
+  this.changedPasswordTime = new Date(Date.now() - 1000);
   next();
 });
 
-userSchema.methods.comparePassword = async function (pass: string, storedPass: string) {
-  return await bcrypt.compare(pass, storedPass);
+// Method to compare passwords
+userSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
+  return await bcrypt.compare(candidatePassword, this.password);
 };
 
-userSchema.methods.checkChangedPassword = function (JWTtime: number) {
+// Method to check if the password was changed after the token was issued
+userSchema.methods.checkChangedPassword = function (JWTtime: number): boolean {
   if (this.changedPasswordTime) {
-    // change the changedPasswordTime from milliseconds to be in seconds as the JWT timeStamp is in seconds
-    const changedTimeInSeconds = parseInt((this.changedPasswordTime.getTime() / 1000) as unknown as string, 10);
-
+    const changedTimeInSeconds = Math.floor(this.changedPasswordTime.getTime() / 1000);
     return JWTtime < changedTimeInSeconds;
   }
-
   return false;
 };
 
-userSchema.methods.createPasswordResetToken = function () {
+// Method to create a password reset token
+userSchema.methods.createPasswordResetToken = function (): string {
   const resetToken = crypto.randomBytes(32).toString("hex");
-
   this.passwordResetToken = crypto.createHash("sha256").update(resetToken).digest("hex");
-
-  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
-
+  this.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000);
   return resetToken;
 };
 
-userSchema.methods.createEmailVerificationToken = function () {
+// Method to create an email verification token
+userSchema.methods.createEmailVerificationToken = function (): string {
   const verificationToken = crypto.randomBytes(32).toString("hex");
-
   this.emailVerificationToken = crypto.createHash("sha256").update(verificationToken).digest("hex");
-
-  this.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
-
+  this.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
   return verificationToken;
 };
 
-userSchema.methods.checkLogin = function () {
-  // Get the current timestamp
+// Method to check login attempts and lockout
+userSchema.methods.checkLogin = function (): boolean {
   const now = Date.now();
 
-  // Check if the last login attempt was within the last minute
-  if (this.lastLoginAttempt && now - this.lastLoginAttempt <= 60 * 1000) {
-    // If login attempts are less than 10, increment attempts and allow login
+  if (this.lastLoginAttempt && now - this.lastLoginAttempt.getTime() <= 60 * 1000) {
     if (this.loginAttempts < 10) {
       this.loginAttempts += 1;
-      this.lastLoginAttempt = now;
+      this.lastLoginAttempt = new Date(now);
       return true;
     } else {
-      // If login attempts exceed 10, set a lockout period of 1 hour and deny login
-      this.loginExpires = now + 60 * 60 * 1000;
+      this.loginExpires = new Date(now + 60 * 60 * 1000);
       return false;
     }
   } else {
-    // If last login attempt was more than a minute ago, check if a lockout period is set
-    if (this.loginExpires) {
-      // If the lockout period has not expired, deny login
-      if (this.loginExpires > now) {
-        return false;
-      } else {
-        // If the lockout period has expired, clear the lockout
-        this.loginExpires = undefined;
-      }
+    if (this.loginExpires && this.loginExpires > now) {
+      return false;
     }
-    // Reset login attempts and set the last login attempt time
+    this.loginExpires = undefined;
     this.loginAttempts = 1;
-    this.lastLoginAttempt = now;
-    return true; // Allow login
+    this.lastLoginAttempt = new Date(now);
+    return true;
   }
 };
 
-const User = mongoose.model("User", userSchema);
+// Create and export the User model
+const User: Model<IUser> = mongoose.model<IUser>("User", userSchema);
 
 export default User;
