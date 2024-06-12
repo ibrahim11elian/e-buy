@@ -1,6 +1,19 @@
-import mongoose from "mongoose";
+/* eslint-disable no-unused-vars */
+import mongoose, { Document, Schema, Model } from "mongoose";
 
-const cartItemSchema = new mongoose.Schema(
+export interface ICart extends Document {
+  user: mongoose.Types.ObjectId;
+  product: mongoose.Types.ObjectId;
+  quantity: number;
+  price: number;
+  populate: () => Promise<ICart>;
+}
+
+interface ICartModel extends Model<ICart> {
+  calcTotalPrice(userId: string): Promise<number>;
+}
+
+const cartItemSchema: Schema<ICart> = new Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -27,6 +40,36 @@ const cartItemSchema = new mongoose.Schema(
   },
 );
 
-const CartItem = mongoose.model("Cart", cartItemSchema);
+cartItemSchema.index({ user: 1, product: 1 });
+
+cartItemSchema.index({ user: 1 });
+
+cartItemSchema.pre(/^find/, function (next) {
+  this.populate({
+    path: "product",
+    select: "name",
+  });
+  next();
+});
+
+cartItemSchema.statics.calcTotalPrice = async function (userId: string) {
+  const total = await this.aggregate([
+    {
+      $match: {
+        user: new mongoose.Types.ObjectId(userId),
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalPrice: { $sum: { $multiply: ["$quantity", "$price"] } },
+      },
+    },
+  ]);
+
+  return total.length > 0 ? total[0].totalPrice : 0;
+};
+
+const CartItem: ICartModel = mongoose.model<ICart, ICartModel>("Cart", cartItemSchema);
 
 export default CartItem;
