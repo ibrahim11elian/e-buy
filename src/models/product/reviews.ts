@@ -1,6 +1,14 @@
-import mongoose from "mongoose";
+import mongoose, { Model, Schema } from "mongoose";
 
-const reviewsSchema = new mongoose.Schema(
+interface IReview {
+  rating: number;
+  review: string;
+  user: mongoose.Types.ObjectId;
+  product: mongoose.Types.ObjectId;
+  populate: () => Promise<IReview>;
+}
+
+const reviewsSchema: Schema<IReview> = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -26,6 +34,17 @@ const reviewsSchema = new mongoose.Schema(
   },
 );
 
-const Review = mongoose.model("Review", reviewsSchema);
+reviewsSchema.pre(/^find/, function (next) {
+  this.populate([
+    {
+      path: "user",
+      select: "name",
+    },
+  ]);
+
+  next();
+});
+
+const Review: Model<IReview> = mongoose.model<IReview>("Review", reviewsSchema);
 
 export default Review;
