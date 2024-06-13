@@ -1,4 +1,23 @@
-import mongoose from "mongoose";
+import mongoose, { Document, Model } from "mongoose";
+import Product from "./product/product";
+
+export interface IOrder extends Document {
+  user: string;
+  orderItems: [
+    {
+      product: string;
+      quantity: number;
+    },
+  ];
+  shippingAddress: string;
+  paymentMethod?: string;
+  totalAmount: number;
+  paymentStatus?: boolean;
+  status?: string;
+  currency?: string;
+}
+
+interface IOrderModel extends Model<IOrder> {}
 
 const orderSchema = new mongoose.Schema(
   {
@@ -53,6 +72,7 @@ const orderSchema = new mongoose.Schema(
         values: ["USD", "EUR", "EGP"],
         message: "Invalid Currency",
       },
+      default: "USD",
       required: [true, "Currency is required"],
     },
     paymentStatus: {
@@ -65,6 +85,21 @@ const orderSchema = new mongoose.Schema(
   },
 );
 
-const Order = mongoose.model("Order", orderSchema);
+orderSchema.post("save", async function (order, next) {
+  try {
+    const updateStockPromises = order.orderItems.map(async (item) => {
+      await Product.findByIdAndUpdate(item.product, { $inc: { stockQuantity: -item.quantity } }, { new: true, useFindAndModify: false });
+    });
+
+    // Wait for all the promises to complete
+    await Promise.all(updateStockPromises);
+
+    next();
+  } catch (error: any) {
+    next(error);
+  }
+});
+
+const Order: IOrderModel = mongoose.model<IOrder, IOrderModel>("Order", orderSchema);
 
 export default Order;
