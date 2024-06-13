@@ -3,7 +3,7 @@ import mongoose, { Document, Schema, Model } from "mongoose";
 
 export interface ICart extends Document {
   user: mongoose.Types.ObjectId;
-  product: mongoose.Types.ObjectId;
+  product: { _id: mongoose.Types.ObjectId; name: string; stockQuantity: number };
   quantity: number;
   price: number;
   populate: () => Promise<ICart>;
@@ -47,7 +47,7 @@ cartItemSchema.index({ user: 1 });
 cartItemSchema.pre(/^find/, function (next) {
   this.populate({
     path: "product",
-    select: "name",
+    select: "name stockQuantity",
   });
   next();
 });
