@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "nodemon ./build/server.js",
-    "start": "NODE_ENV=production node server.js",
+    "start": "NODE_ENV=production node ./build/server.js",
     "lint": "eslint src/**/*.ts "
   },
   "keywords": [
