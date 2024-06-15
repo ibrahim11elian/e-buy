@@ -59,6 +59,7 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
+      trim: true,
       enum: {
         values: ["Pending", "Shipped", "Delivered", "Cancelled"],
         message: "Invalid Status",
@@ -85,21 +86,46 @@ const orderSchema = new mongoose.Schema(
   },
 );
 
-orderSchema.post("save", async function (order, next) {
-  try {
-    const updateStockPromises = order.orderItems.map(async (item) => {
-      await Product.findByIdAndUpdate(item.product, { $inc: { stockQuantity: -item.quantity } }, { new: true, useFindAndModify: false });
-    });
+// adjust stock when order status changes to 'Cancelled' or 'Pending'
+orderSchema.pre("save", async function (next) {
+  // we can not use this.isNew because mongoose set it false by default
+  // because it treat it as incomplete transaction so it's not yet finished so it's not get saved to the DB
+  // we can use this.isModified('status')
+  if (this.isModified("status")) {
+    const originalOrder = await Order.findById(this._id).lean();
 
-    // Wait for all the promises to complete
-    await Promise.all(updateStockPromises);
-
-    next();
-  } catch (error: any) {
-    next(error);
+    if (
+      originalOrder &&
+      originalOrder.status !== "Cancelled" &&
+      this.status === "Cancelled"
+    ) {
+      // If the status changes from anything to 'canceled', increase the stock
+      await adjustStock(originalOrder.orderItems, true);
+    }
+  } else if (this.status === "Pending") {
+    // If the status changes from anything to 'pending', decrease the stock
+    await adjustStock(this.orderItems, false);
   }
+  next();
 });
 
-const Order: IOrderModel = mongoose.model<IOrder, IOrderModel>("Order", orderSchema);
+const adjustStock = async (orderItems: any[], increment: boolean) => {
+  const adjustment = increment ? 1 : -1;
+
+  const updateStockPromises = orderItems.map(async (item) => {
+    await Product.findByIdAndUpdate(
+      item.product,
+      { $inc: { stockQuantity: adjustment * item.quantity } },
+      { new: true, useFindAndModify: false },
+    );
+  });
+
+  await Promise.all(updateStockPromises);
+};
+
+const Order: IOrderModel = mongoose.model<IOrder, IOrderModel>(
+  "Order",
+  orderSchema,
+);
 
 export default Order;
