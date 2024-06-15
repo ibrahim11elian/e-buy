@@ -6,7 +6,7 @@ import validator from "validator";
 import bcrypt from "bcryptjs";
 
 // Define IUser interface extending Document
-interface IUser {
+export interface IUser extends Document {
   username: string;
   firstName: string;
   lastName: string;
@@ -30,8 +30,9 @@ interface IUser {
   checkChangedPassword: (JWTTime: number) => boolean;
   generatePasswordReset: () => string;
   checkLogin: () => boolean;
-  save: () => Promise<IUser>;
 }
+
+export interface IUserModel extends Model<IUser> {}
 
 const userSchema: Schema<IUser> = new mongoose.Schema(
   {
@@ -149,14 +150,18 @@ userSchema.pre("save", function (next) {
 });
 
 // Method to compare passwords
-userSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
+userSchema.methods.comparePassword = async function (
+  candidatePassword: string,
+): Promise<boolean> {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
 // Method to check if the password was changed after the token was issued
 userSchema.methods.checkChangedPassword = function (JWTtime: number): boolean {
   if (this.changedPasswordTime) {
-    const changedTimeInSeconds = Math.floor(this.changedPasswordTime.getTime() / 1000);
+    const changedTimeInSeconds = Math.floor(
+      this.changedPasswordTime.getTime() / 1000,
+    );
     return JWTtime < changedTimeInSeconds;
   }
   return false;
@@ -165,7 +170,10 @@ userSchema.methods.checkChangedPassword = function (JWTtime: number): boolean {
 // Method to create a password reset token
 userSchema.methods.createPasswordResetToken = function (): string {
   const resetToken = crypto.randomBytes(32).toString("hex");
-  this.passwordResetToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+  this.passwordResetToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
   this.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000);
   return resetToken;
 };
@@ -173,7 +181,10 @@ userSchema.methods.createPasswordResetToken = function (): string {
 // Method to create an email verification token
 userSchema.methods.createEmailVerificationToken = function (): string {
   const verificationToken = crypto.randomBytes(32).toString("hex");
-  this.emailVerificationToken = crypto.createHash("sha256").update(verificationToken).digest("hex");
+  this.emailVerificationToken = crypto
+    .createHash("sha256")
+    .update(verificationToken)
+    .digest("hex");
   this.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
   return verificationToken;
 };
@@ -182,7 +193,10 @@ userSchema.methods.createEmailVerificationToken = function (): string {
 userSchema.methods.checkLogin = function (): boolean {
   const now = Date.now();
 
-  if (this.lastLoginAttempt && now - this.lastLoginAttempt.getTime() <= 60 * 1000) {
+  if (
+    this.lastLoginAttempt &&
+    now - this.lastLoginAttempt.getTime() <= 60 * 1000
+  ) {
     if (this.loginAttempts < 10) {
       this.loginAttempts += 1;
       this.lastLoginAttempt = new Date(now);
@@ -203,6 +217,6 @@ userSchema.methods.checkLogin = function (): boolean {
 };
 
 // Create and export the User model
-const User: Model<IUser> = mongoose.model<IUser>("User", userSchema);
+const User: IUserModel = mongoose.model<IUser, IUserModel>("User", userSchema);
 
 export default User;
