@@ -31,7 +31,7 @@ class Email {
 
     return nodemailer.createTransport({
       host: process.env.EMAIL_HOST as string,
-      port: parseInt(process.env.EMAIL_PORT as string, 10),
+      port: process.env.EMAIL_PORT as string,
       auth: {
         user: process.env.EMAIL_USERNAME as string,
         pass: process.env.EMAIL_PASSWORD as string,
@@ -43,7 +43,7 @@ class Email {
     try {
       // render HTML based on a bug template
       const html = pug.renderFile(
-        path.join(process.cwd(), "views", `${template}.pug`),
+        path.join(process.cwd(), "src", "views", `${template}.pug`),
         {
           firstName: this.firstName,
           url: this.url,
