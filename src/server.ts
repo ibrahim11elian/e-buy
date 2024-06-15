@@ -3,7 +3,7 @@ import app from "./app";
 
 // Connecting to the Database
 mongoose
-  .connect(process.env.LOCAL_DB as string)
+  .connect(process.env.DB_HOST as string)
   .then(() => {
     console.log("Connected to the Database");
   })
