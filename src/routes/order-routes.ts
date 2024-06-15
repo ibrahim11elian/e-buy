@@ -11,6 +11,12 @@ const order = new Order();
 router.route("/checkout").post(auth.protect, order.createOrder);
 
 router.get("/", auth.protect, order.getUserOrders);
-router.get("/:id", auth.protect, order.getOrder);
+router
+  .route("/:id")
+  .all(auth.protect)
+  .get(order.getOrder)
+  .patch(auth.restrictTo("admin"), order.updateOrderStatus);
+
+router.patch("/:id/cancel", auth.protect, order.cancelOrder);
 
 export default router;
