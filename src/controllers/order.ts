@@ -4,6 +4,7 @@ import Order, { IOrder } from "../models/order";
 import BaseController from "./base";
 import Cart, { ICart } from "../models/cart";
 import AppError from "../utils/error";
+import mongoose, { ClientSession } from "mongoose";
 
 class OrderController extends BaseController<IOrder> {
   constructor() {
@@ -17,7 +18,9 @@ class OrderController extends BaseController<IOrder> {
       throw new AppError("There is no cart list for this user", 404);
     }
     // Check if there's enough stock for each product in the cart
-    const isStockAvailable = cartList.every((item) => item.quantity <= item.product.stockQuantity);
+    const isStockAvailable = cartList.every(
+      (item) => item.quantity <= item.product.stockQuantity,
+    );
 
     if (!isStockAvailable) {
       throw new AppError("There is not enough stock for these products", 400);
@@ -26,19 +29,16 @@ class OrderController extends BaseController<IOrder> {
     return cartList;
   };
 
-  createOrderDocument = async (order: Partial<IOrder>) => {
-    return await Order.create({
-      user: order.user,
-      totalAmount: order.totalAmount,
-      orderItems: order.orderItems,
-      shippingAddress: order.shippingAddress,
-      paymentMethod: order.paymentMethod,
-      currency: order.currency,
-      paymentStatus: order.paymentStatus,
-    });
+  createOrderDocument = async (
+    order: Partial<IOrder>,
+    session: ClientSession,
+  ) => {
+    return await Order.create([order], { session });
   };
 
   createOrder = async (req: Request, res: Response, next: NextFunction) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
       const { shippingAddress, paymentMethod, currency } = req.body;
 
@@ -99,9 +99,13 @@ class OrderController extends BaseController<IOrder> {
           paymentMethod,
           currency,
         };
-        const order = await this.createOrderDocument(newOrder);
+        const order = await this.createOrderDocument(newOrder, session);
 
-        await Cart.deleteMany({ user: req.user.id });
+        await Cart.deleteMany({ user: req.user.id }).session(session);
+
+        // Commit the transaction if all operations succeed
+        await session.commitTransaction();
+        session.endSession();
 
         return res.status(201).json({
           status: "success",
@@ -109,11 +113,18 @@ class OrderController extends BaseController<IOrder> {
         });
       }
     } catch (error) {
+      // Abort transaction and handle error
+      await session.abortTransaction();
+      session.endSession();
       next(error);
     }
   };
 
-  handleStripeWebhook = async (req: Request, res: Response, next: NextFunction) => {
+  handleStripeWebhook = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     interface OrderMetadata {
       userId: string;
       shippingAddress: string;
@@ -128,30 +139,56 @@ class OrderController extends BaseController<IOrder> {
     let event;
 
     try {
-      event = stripe.webhooks.constructEvent(req.body, signature as string, process.env.STRIPE_WEBHOOK_SECRET as string);
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        signature as string,
+        process.env.STRIPE_WEBHOOK_SECRET as string,
+      );
     } catch (err: any) {
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
     if (event.type === "checkout.session.completed") {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const metadata = session.metadata as unknown as OrderMetadata;
+      const stripeSession = event.data.object as Stripe.Checkout.Session;
+      const metadata = stripeSession.metadata as unknown as OrderMetadata;
 
-      const { userId, shippingAddress, paymentMethod, currency, products, totalAmount } = metadata;
+      const {
+        userId,
+        shippingAddress,
+        paymentMethod,
+        currency,
+        products,
+        totalAmount,
+      } = metadata;
+
+      const session = await mongoose.startSession();
+      session.startTransaction();
 
       try {
-        await Order.create({
-          user: userId,
-          totalAmount: parseFloat(totalAmount),
-          orderItems: JSON.parse(products),
-          shippingAddress,
-          paymentMethod,
-          currency,
-          paymentStatus: true,
-        });
+        await Order.create(
+          [
+            {
+              user: userId,
+              totalAmount: parseFloat(totalAmount),
+              orderItems: JSON.parse(products),
+              shippingAddress,
+              paymentMethod,
+              currency,
+              paymentStatus: true,
+            },
+          ],
+          { session },
+        );
 
-        await Cart.deleteMany({ user: userId });
+        await Cart.deleteMany({ user: userId }).session(session);
+
+        // Commit the transaction if all operations succeed
+        await session.commitTransaction();
+        session.endSession();
       } catch (error) {
+        // Abort transaction and handle error
+        await session.abortTransaction();
+        session.endSession();
         next(new AppError("Order creation failed after payment", 500));
       }
     }
@@ -189,6 +226,101 @@ class OrderController extends BaseController<IOrder> {
         data: order,
       });
     } catch (error) {
+      next(error);
+    }
+  };
+
+  // Admin usage
+  updateOrderStatus = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const { id } = req.params;
+
+      if (!req.body.status) {
+        return next(new AppError("status required", 400));
+      }
+      for (const i in req.body) {
+        if (i !== "status") delete req.body[i];
+      }
+
+      const order = await Order.findById(id).session(session);
+
+      if (!order) {
+        return next(new AppError("Order not found", 404));
+      }
+
+      if (order.status === "Cancelled") {
+        return next(
+          new AppError("Order is cancelled you can not change it", 400),
+        );
+      }
+
+      order.status = req.body.status;
+      await order.save({ session });
+
+      // Commit the transaction if all operations succeed
+      await session.commitTransaction();
+      session.endSession();
+
+      res.status(200).json({
+        status: "success",
+        message: "Order has been updated successfully",
+        data: order,
+      });
+
+      //TODO: Send Email
+    } catch (error) {
+      // Abort transaction and handle error
+      await session.abortTransaction();
+      session.endSession();
+      next(error);
+    }
+  };
+
+  cancelOrder = async (req: Request, res: Response, next: NextFunction) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const { id } = req.params;
+
+      const order = await Order.findById(id).session(session);
+
+      if (!order) {
+        return next(new AppError("Order not found", 404));
+      }
+
+      if (order.user.toString() !== req.user.id) {
+        return next(new AppError("You don't have order with this id", 401));
+      }
+
+      if (order.status === "Cancelled") {
+        return next(new AppError("Order is already cancelled", 400));
+      }
+
+      if (order.status !== "Pending") {
+        return next(new AppError("Only pending orders can be cancelled", 400));
+      }
+
+      order.status = "Cancelled";
+      await order.save({ session });
+
+      // Commit the transaction if all operations succeed
+      await session.commitTransaction();
+      session.endSession();
+
+      res.status(200).json({
+        status: "success",
+        message: "Order has been canceled",
+      });
+    } catch (error) {
+      // Abort transaction and handle error
+      await session.abortTransaction();
+      session.endSession();
       next(error);
     }
   };
