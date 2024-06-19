@@ -16,6 +16,12 @@ router.use("/orders", orderRouter);
 router.post("/signup", auth.signup);
 router.post("/login", auth.validateLoginAttempt, auth.login);
 router.delete("/logout", auth.logout);
+router.get("/verify-email", auth.verifyEmail);
+router.post("/resend-verification-email", auth.resendVerificationEmail);
+
+// password routes
+router.post("/forgotPassword", auth.forgotPassword);
+router.patch("/resetPassword/:token", auth.resetPassword);
 
 router.use(auth.protect);
 

@@ -1,11 +1,11 @@
 /* eslint-disable no-unused-vars */
+import crypto from "crypto";
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/user/user";
 import AppError from "../utils/error";
 import Email from "../utils/email";
 import mongoose from "mongoose";
-
 interface JwtPayload {
   id: string;
   iat: number;
@@ -40,19 +40,21 @@ class Authentication {
         { session },
       );
 
-      await new Email(
-        createdUser[0],
-        `${req.protocol}://${req.hostname}/api/v1/me`,
-      ).sendWelcome();
+      const verificationToken = createdUser[0].createEmailVerificationToken();
 
-      // the password not removed because this is not the final shape of this endpoint
+      await createdUser[0].save({ session });
+
+      // send email verification
+      const url = `${req.protocol}://${req.get("host")}/api/v1/users/verify-email?token=${verificationToken}`;
+
+      await new Email(createdUser[0], url).sendVerification();
 
       await session.commitTransaction();
       await session.endSession();
       res.status(200).json({
         status: "success",
-        message: "User created successfully!",
-        data: createdUser,
+        message:
+          "User created successfully, please check ypu email to validate your account.",
       });
     } catch (error) {
       await session.abortTransaction();
@@ -299,6 +301,100 @@ class Authentication {
     }
   };
 
+  forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+    const { email } = req.body;
+    if (!email) {
+      return next(
+        new AppError("Missing information you have to provide email", 400),
+      );
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    if (
+      user.passwordResetToken &&
+      user.passwordResetExpires &&
+      user.passwordResetExpires.getTime() > Date.now()
+    ) {
+      return next(new AppError("Password reset token is already sent", 400));
+    }
+    try {
+      // generate random reset token
+      const resetToken = user.createPasswordResetToken();
+      await user.save({ validateBeforeSave: false });
+
+      const resetURL = `${req.protocol}://${req.get("host")}/api/v1/users/resetPassword/${resetToken}`;
+
+      await new Email(user, resetURL).sendResetPassword();
+
+      res.status(200).json({
+        status: "success",
+        message: "Token was sent successfully to your email.",
+      });
+    } catch (error) {
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
+      await user.save({ validateBeforeSave: false });
+      return next(
+        new AppError(
+          "There was an error sending the email, try again later.",
+          500,
+        ),
+      );
+    }
+  };
+
+  resetPassword = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { token } = req.params;
+
+      if (!token) {
+        return next(
+          new AppError("Missing information you have to provide token", 400),
+        );
+      }
+
+      const hashedToken = crypto
+        .createHash("sha256")
+        .update(token)
+        .digest("hex");
+
+      const user = await User.findOne({
+        passwordResetToken: hashedToken,
+        passwordResetExpires: { $gt: Date.now() },
+      });
+
+      // check if the user is exist and the token has not expired
+      //  then set the new password
+      if (!user) {
+        return next(new AppError("The token is expired or invalid", 400));
+      }
+
+      user.password = req.body.password;
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
+
+      await user.save();
+
+      // send jwt token to the user
+      const newToken = this.generateToken({ id: user._id });
+
+      this.sendTokenCookie(newToken, req, res);
+
+      res.status(200).json({
+        status: "success",
+        message: "the password was reset successfully",
+        token: newToken,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   restrictTo(...role: string[]) {
     return (req: Request, res: Response, next: NextFunction) => {
       if (!role.includes(req.user.role)) {
@@ -313,6 +409,100 @@ class Authentication {
       next();
     };
   }
+
+  verifyEmail = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const confirmToken = req.query.token;
+
+      if (!confirmToken) {
+        return next(new AppError("token is missing", 400));
+      }
+
+      const hashedToken = crypto
+        .createHash("sha256")
+        .update(confirmToken as string)
+        .digest("hex");
+
+      const user = await User.findOne({
+        emailVerificationToken: hashedToken,
+        emailVerificationExpires: { $gt: Date.now() },
+      }).select("+isVerified");
+
+      if (!user) {
+        return next(
+          new AppError(
+            "Email verification token is invalid or has expired.",
+            400,
+          ),
+        );
+      }
+
+      user.isVerified = true;
+      user.emailVerificationToken = undefined as unknown as string;
+      user.emailVerificationExpires = undefined as unknown as Date;
+      await user.save();
+
+      const url = `${req.protocol}://${req.get("host")}/me`;
+      await new Email(user, url).sendWelcome();
+
+      res.status(201).json({
+        status: "success",
+        message: "Email has been successfully verified, You can login now",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  resendVerificationEmail = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    try {
+      const { email } = req.body;
+      const user = await User.findOne({ email }).select([
+        "+isVerified",
+        "+emailVerificationExpires",
+        "+emailVerificationToken",
+      ]);
+
+      if (!user) {
+        return next(new AppError("User not found.", 400));
+      }
+
+      if (user.isVerified) {
+        return next(new AppError("Email is already verified.", 400));
+      }
+
+      if (
+        user.emailVerificationExpires &&
+        user.emailVerificationExpires.getTime() > Date.now()
+      ) {
+        return next(
+          new AppError("Email verification token is still valid.", 400),
+        );
+      }
+
+      // Clear previous token and expiration date
+      user.emailVerificationToken = undefined as unknown as string;
+      user.emailVerificationExpires = undefined as unknown as Date;
+      await user.save({ validateBeforeSave: false });
+
+      const verificationToken = user.createEmailVerificationToken();
+      await user.save({ validateBeforeSave: false });
+
+      const url = `${req.protocol}://${req.get("host")}/api/v1/users/verify-email?token=${verificationToken}`;
+      await new Email(user, url).sendVerification();
+
+      res.status(200).json({
+        status: "success",
+        message: "New verification email sent.",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export default Authentication;
