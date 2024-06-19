@@ -5,6 +5,8 @@ import BaseController from "./base";
 import Cart, { ICart } from "../models/cart";
 import AppError from "../utils/error";
 import mongoose, { ClientSession } from "mongoose";
+import Email from "../utils/email";
+import User, { IUser } from "../models/user/user";
 
 class OrderController extends BaseController<IOrder> {
   constructor() {
@@ -199,7 +201,7 @@ class OrderController extends BaseController<IOrder> {
   getUserOrders = async (req: Request, res: Response, next: NextFunction) => {
     try {
       req.query.user = req.user.id;
-      await this.getAll(req, res, next);
+      return this.getAll();
     } catch (error) {
       next(error);
     }
@@ -248,7 +250,12 @@ class OrderController extends BaseController<IOrder> {
         if (i !== "status") delete req.body[i];
       }
 
-      const order = await Order.findById(id).session(session);
+      const order = await Order.findById(id)
+        .populate({
+          path: "orderItems.product",
+          select: "name price currency",
+        })
+        .session(session);
 
       if (!order) {
         return next(new AppError("Order not found", 404));
@@ -260,9 +267,19 @@ class OrderController extends BaseController<IOrder> {
         );
       }
 
+      if (order.status === req.body.status) {
+        return next(
+          new AppError(`The order status is already ${req.body.status}`, 400),
+        );
+      }
+
       order.status = req.body.status;
       await order.save({ session });
 
+      const user = await User.findById(order.user).session(session);
+
+      const url = `${req.protocol}://${req.get("host")}/api/v1/orders/${order.id}`;
+      await new Email(user as IUser, url).sendShipped(order);
       // Commit the transaction if all operations succeed
       await session.commitTransaction();
       session.endSession();
@@ -272,8 +289,6 @@ class OrderController extends BaseController<IOrder> {
         message: "Order has been updated successfully",
         data: order,
       });
-
-      //TODO: Send Email
     } catch (error) {
       // Abort transaction and handle error
       await session.abortTransaction();
