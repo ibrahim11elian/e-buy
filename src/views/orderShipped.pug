@@ -1,0 +1,23 @@
+extends baseEmail
+
+block content
+  p Hi #{firstName},
+  p Your order has been shipped! 🚚📦
+  p Here are the details:
+  table.table-order
+    thead
+      tr
+        th Product Name
+        th Quantity
+        th Price
+    tbody
+      each item in orderItems
+        tr
+          td #{item.product.name}
+          td #{item.quantity}
+          td #{item.product.price * item.quantity} #{item.product.currency}
+  
+  p
+    | You can view your order details 
+    a(href=`${orderUrl}`, target='_blank') here.
+  p If you need any help, please don't hesitate to contact the support team!
