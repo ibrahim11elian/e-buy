@@ -7,7 +7,7 @@ class ProductController extends BaseController<IProduct> {
   }
 
   createProduct = this.createOne;
-  getProducts = this.getAll;
+  getProducts = this.getAll();
   getProduct = this.getOne();
   updateProduct = this.updateOne;
   deleteProduct = this.deleteOne;

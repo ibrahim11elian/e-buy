@@ -54,8 +54,7 @@ class UserController extends BaseController<IUser> {
     }
   };
 
-  getAllUsers = async (req: Request, res: Response, next: NextFunction) =>
-    await this.getAll(req, res, next);
+  getAllUsers = this.getAll();
   getUserByID = this.getOne();
   updateUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
