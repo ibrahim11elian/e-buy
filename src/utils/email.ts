@@ -5,6 +5,7 @@ import pug from "pug";
 import { htmlToText } from "html-to-text";
 import AppError from "./error.js";
 import { IUser } from "../models/user/user.js";
+import logger from "./logger.js";
 
 class Email {
   private to: string;
@@ -18,7 +19,7 @@ class Email {
     this.from = `E-Buy <${process.env.EMAIL_FROM}>`;
   }
 
-  createNewTransport() {
+  private createNewTransport() {
     if (process.env.NODE_ENV === "production") {
       return nodemailer.createTransport({
         service: "SendGrid",
@@ -39,7 +40,11 @@ class Email {
     } as nodemailer.TransportOptions);
   }
 
-  send = async (template: string, subject: string) => {
+  private send = async (
+    template: string,
+    subject: string,
+    data?: Record<string, any>,
+  ) => {
     try {
       // render HTML based on a bug template
       const html = pug.renderFile(
@@ -48,6 +53,7 @@ class Email {
           firstName: this.firstName,
           url: this.url,
           subject,
+          orderItems: data?.orderItems,
         },
       );
       // define the email options
@@ -65,7 +71,7 @@ class Email {
       // send email
       await transporter.sendMail(mailOptions);
     } catch (error) {
-      //   logger.error(`Error sending email to user ${this.to}:`, error);
+      logger.error(`Error sending email to user ${this.to}:`, error);
       throw new AppError("Error Sending email", 500);
     }
   };
@@ -83,6 +89,9 @@ class Email {
       "passwordReset",
       "E-Buy Account Reset Password (valid for 10 min)",
     );
+  };
+  sendShipped = async (order: Record<string, any>) => {
+    await this.send("orderShipped", "Order Status Update", order);
   };
 }
 
