@@ -28,7 +28,8 @@ export interface IUser extends Document {
   emailVerificationExpires: Date;
   comparePassword: (candidatePassword: string) => Promise<boolean>;
   checkChangedPassword: (JWTTime: number) => boolean;
-  generatePasswordReset: () => string;
+  createPasswordResetToken: () => string;
+  createEmailVerificationToken: () => string;
   checkLogin: () => boolean;
 }
 
