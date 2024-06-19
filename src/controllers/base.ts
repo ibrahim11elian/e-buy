@@ -87,20 +87,26 @@ class BaseController<T extends Document> {
     };
   };
 
-  getAll = async (req: Request, res: Response, next: NextFunction, additionalData?: Record<string, any>) => {
-    try {
-      const features = new APIFeatures(this.model.find(), req.query).filter().sort().limitFields().paginate();
+  getAll = (additionalData?: Record<string, any>) => {
+    return async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const features = new APIFeatures(this.model.find(), req.query)
+          .filter()
+          .sort()
+          .limitFields()
+          .paginate();
 
-      const documents = await features.query;
-      res.status(200).json({
-        status: "success",
-        results: documents.length,
-        data: documents,
-        ...additionalData,
-      });
-    } catch (error) {
-      next(error);
-    }
+        const documents = await features.query;
+        res.status(200).json({
+          status: "success",
+          results: documents.length,
+          data: documents,
+          ...additionalData,
+        });
+      } catch (error) {
+        next(error);
+      }
+    };
   };
 }
 
