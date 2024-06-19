@@ -9,13 +9,19 @@ class CartController extends BaseController<ICart> {
     super(Cart);
   }
 
-  addOrUpdateCartItem = async (req: Request, res: Response, next: NextFunction) => {
+  addOrUpdateCartItem = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const { product, quantity } = req.body;
       const userId = req.user.id;
 
       if (!product || !quantity) {
-        return next(new AppError("You need to add the product id and the quantity", 400));
+        return next(
+          new AppError("You need to add the product id and the quantity", 400),
+        );
       }
 
       if (parseInt(quantity) <= 0) {
@@ -90,7 +96,9 @@ class CartController extends BaseController<ICart> {
         return next(new AppError("Cart not found", 404));
       }
 
-      cart.user.toString() === req.user.id.toString() ? next() : next(new AppError("You don't have cart with this id", 403));
+      cart.user.toString() === req.user.id.toString()
+        ? next()
+        : next(new AppError("You don't have cart with this id", 403));
     } catch (error) {
       next(error);
     }
@@ -103,7 +111,7 @@ class CartController extends BaseController<ICart> {
 
       const totalPrice = await Cart.calcTotalPrice(req.user.id);
 
-      return await this.getAll(req, res, next, { totalPrice });
+      return this.getAll({ totalPrice });
     } catch (error) {
       next(error);
     }
