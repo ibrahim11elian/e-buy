@@ -4,6 +4,7 @@ import crypto from "crypto";
 import mongoose, { Document, CallbackError, Model, Schema } from "mongoose";
 import validator from "validator";
 import bcrypt from "bcryptjs";
+import Profile from "./profile";
 
 // Define IUser interface extending Document
 export interface IUser extends Document {
@@ -128,6 +129,24 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
     },
   },
 );
+
+userSchema.pre("save", async function (next) {
+  const user = this;
+  if (!user.isNew) return next();
+
+  const session = user.$session(); // Get the current session
+  if (!session) return next(new Error("Transaction session not found"));
+
+  try {
+    // Create profile with the same _id as user document
+    await Profile.create([{ _id: user._id }], { session });
+    // Set the profile field in the user document with the same user id so we can populate it later
+    this.profile = user._id as string;
+    next();
+  } catch (error: any) {
+    next(error);
+  }
+});
 
 // Middleware to hash password before saving
 userSchema.pre("save", async function (next) {
