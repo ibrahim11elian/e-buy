@@ -8,6 +8,8 @@ export interface IProduct extends Document {
   category: string;
   currency: "USD" | "EUR" | "EGP";
   stockQuantity: number;
+  ratingsAverage: number;
+  numOfReviews: number;
 }
 
 const productSchema: Schema<IProduct> = new mongoose.Schema(
@@ -29,7 +31,10 @@ const productSchema: Schema<IProduct> = new mongoose.Schema(
     },
     currency: {
       type: String,
-      enum: { values: ["USD", "EUR", "EGP"], message: "Currency must be in USD or EUR or EGP" },
+      enum: {
+        values: ["USD", "EUR", "EGP"],
+        message: "Currency must be in USD or EUR or EGP",
+      },
       default: "USD",
     },
     stockQuantity: {
@@ -42,12 +47,23 @@ const productSchema: Schema<IProduct> = new mongoose.Schema(
       required: [true, "Category is required"],
     },
     images: [String],
+    ratingsAverage: {
+      type: Number,
+      default: 0,
+    },
+    numOfReviews: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
   },
 );
 
-const Product: Model<IProduct> = mongoose.model<IProduct>("Product", productSchema);
+const Product: Model<IProduct> = mongoose.model<IProduct>(
+  "Product",
+  productSchema,
+);
 
 export default Product;
