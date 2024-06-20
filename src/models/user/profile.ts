@@ -1,11 +1,15 @@
-import mongoose from "mongoose";
+import mongoose, { Document, Model, Schema } from "mongoose";
 
-const profileSchema = new mongoose.Schema(
+export interface IProfile extends Document {
+  bio?: string;
+  photo?: string;
+}
+
+const profileSchema: Schema<IProfile> = new mongoose.Schema<IProfile>(
   {
-    user: {
+    _id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
+      auto: false,
     },
     bio: {
       type: String,
@@ -19,6 +23,9 @@ const profileSchema = new mongoose.Schema(
   },
 );
 
-const Profile = mongoose.model("Profile", profileSchema);
+const Profile: Model<IProfile> = mongoose.model<IProfile>(
+  "Profile",
+  profileSchema,
+);
 
 export default Profile;
