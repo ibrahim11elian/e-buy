@@ -15,6 +15,7 @@ import {
   cartRouter,
   orderRouter,
   productRouter,
+  reviewRouter,
   userRouter,
 } from "./routes";
 import OrderController from "./controllers/order";
@@ -98,6 +99,7 @@ app.get("/", (req: Request, res: Response) => {
 
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/products", productRouter);
+app.use("/api/v1/reviews", reviewRouter);
 app.use("/api/v1/cart", cartRouter);
 app.use("/api/v1/orders", orderRouter);
 app.use("/api/v1/admin", adminRouter);

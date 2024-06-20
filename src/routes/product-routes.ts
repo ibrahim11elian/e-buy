@@ -1,10 +1,14 @@
 import { Router } from "express";
 import Authentication from "../controllers/authentication";
 import Product from "../controllers/product";
+import reviewRouter from "./review-routes";
 
 const router = Router({
   mergeParams: true,
 });
+
+router.use("/:productId/reviews", reviewRouter);
+
 const auth = new Authentication();
 const product = new Product();
 
