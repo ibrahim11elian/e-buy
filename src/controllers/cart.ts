@@ -111,7 +111,7 @@ class CartController extends BaseController<ICart> {
 
       const totalPrice = await Cart.calcTotalPrice(req.user.id);
 
-      return this.getAll({ totalPrice });
+      return this.getAll({ totalPrice })(req, res, next); // immediately invoking the function returned by getAll
     } catch (error) {
       next(error);
     }
