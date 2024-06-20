@@ -2,6 +2,7 @@ import { Router } from "express";
 import Authentication from "../controllers/authentication";
 import cartRouter from "./cart-routes";
 import orderRouter from "./order-routes";
+import profileRouter from "./profile-routes";
 import UserController from "../controllers/user";
 
 const router = Router({
@@ -12,6 +13,7 @@ const user = new UserController();
 
 router.use("/cart", cartRouter);
 router.use("/orders", orderRouter);
+router.use("/profile", profileRouter);
 
 router.post("/signup", auth.signup);
 router.post("/login", auth.validateLoginAttempt, auth.login);
