@@ -11,7 +11,7 @@ class UserController extends BaseController<IUser> {
 
   getMe = async (req: Request, res: Response, next: NextFunction) => {
     req.params.id = req.user.id;
-    return this.getOne();
+    return await this.getOne({ path: "profile" })(req, res, next);
   };
 
   updateMe = async (req: Request, res: Response, next: NextFunction) => {
