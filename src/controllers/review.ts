@@ -48,7 +48,7 @@ class ReviewsController extends BaseController<IReview> {
 
       req.body.user = req.user.id;
 
-      return await this.createOne(req, res, next);
+      return await this.createOne()(req, res, next);
     } catch (error) {
       next(error);
     }
@@ -98,12 +98,12 @@ class ReviewsController extends BaseController<IReview> {
       delete req.body.user;
       delete req.body.product;
 
-      return await this.updateOne(req, res, next);
+      return await this.updateOne()(req, res, next);
     } catch (error) {
       next(error);
     }
   };
-  deleteReview = this.deleteOne;
+  deleteReview = this.deleteOne();
 }
 
 export default ReviewsController;

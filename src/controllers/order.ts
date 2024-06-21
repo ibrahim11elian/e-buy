@@ -201,7 +201,7 @@ class OrderController extends BaseController<IOrder> {
   getUserOrders = async (req: Request, res: Response, next: NextFunction) => {
     try {
       req.query.user = req.user.id;
-      return this.getAll();
+      return await this.getAll()(req, res, next);
     } catch (error) {
       next(error);
     }

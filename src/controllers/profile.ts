@@ -10,7 +10,7 @@ class ProfileController extends BaseController<IProfile> {
   updateProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
       req.params.id = req.user.id;
-      return await this.updateOne(req, res, next);
+      return await this.updateOne()(req, res, next);
     } catch (error) {
       next(error);
     }

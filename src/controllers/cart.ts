@@ -54,11 +54,11 @@ class CartController extends BaseController<ICart> {
         // Update the cart item using the updateOne method from the base class
         req.params.id = (cartItem._id as string).toString();
         req.body.quantity = cartItem.quantity;
-        return await this.updateOne(req, res, next);
+        return await this.updateOne()(req, res, next);
       } else {
         // Use the createOne method from the base class to add a new item
         req.body.user = userId;
-        return await this.createOne(req, res, next);
+        return await this.createOne()(req, res, next);
       }
     } catch (error) {
       next(error);
@@ -79,10 +79,10 @@ class CartController extends BaseController<ICart> {
       }
 
       if (parseInt(quantity) === 0) {
-        return await this.deleteOne(req, res, next);
+        return await this.deleteOne()(req, res, next);
       }
 
-      return await this.updateOne(req, res, next);
+      return await this.updateOne()(req, res, next);
     } catch (error) {
       next(error);
     }

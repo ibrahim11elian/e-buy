@@ -18,7 +18,7 @@ class AddressController extends BaseController<IAddress> {
 
       if (address) {
         req.params.id = req.user.id;
-        return await this.updateOne(req, res, next, session);
+        return await this.updateOne(session)(req, res, next);
       } else {
         req.body._id = req.user.id;
         const newAddress = new Address(req.body);
@@ -67,7 +67,7 @@ class AddressController extends BaseController<IAddress> {
       );
 
       // Delete the address within the transaction
-      await this.deleteOne(req, res, next, session);
+      await this.deleteOne(session)(req, res, next);
 
       await session.commitTransaction();
       session.endSession();

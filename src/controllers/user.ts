@@ -61,12 +61,12 @@ class UserController extends BaseController<IUser> {
       // delete the password so the admin can not update it
       delete req.body.password;
 
-      return await this.updateOne(req, res, next);
+      return await this.updateOne()(req, res, next);
     } catch (error) {
       next(error);
     }
   };
-  deleteUser = this.deleteOne;
+  deleteUser = this.deleteOne();
 }
 
 export default UserController;
