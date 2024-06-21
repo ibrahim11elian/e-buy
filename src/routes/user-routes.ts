@@ -3,6 +3,7 @@ import Authentication from "../controllers/authentication";
 import cartRouter from "./cart-routes";
 import orderRouter from "./order-routes";
 import profileRouter from "./profile-routes";
+import addressRouter from "./address-routes";
 import UserController from "../controllers/user";
 
 const router = Router({
@@ -14,7 +15,9 @@ const user = new UserController();
 router.use("/cart", cartRouter);
 router.use("/orders", orderRouter);
 router.use("/profile", profileRouter);
+router.use("/address", addressRouter);
 
+// user routes
 router.post("/signup", auth.signup);
 router.post("/login", auth.validateLoginAttempt, auth.login);
 router.delete("/logout", auth.logout);
