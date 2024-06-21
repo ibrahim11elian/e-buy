@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { Document, Model, PopulateOptions } from "mongoose";
+import mongoose, { Document, Model, PopulateOptions } from "mongoose";
 import AppError from "../utils/error";
 import { APIFeatures } from "../utils/api-features";
 
@@ -10,10 +10,17 @@ class BaseController<T extends Document> {
     this.model = model;
   }
 
-  deleteOne = async (req: Request, res: Response, next: NextFunction) => {
+  deleteOne = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+    session?: mongoose.ClientSession,
+  ) => {
     try {
       const { id } = req.params;
-      const document = await this.model.findByIdAndDelete(id);
+      const document = await this.model
+        .findByIdAndDelete(id)
+        .session(session as mongoose.ClientSession);
 
       if (!document) {
         return next(new AppError("Document not found!", 404));
@@ -28,13 +35,20 @@ class BaseController<T extends Document> {
     }
   };
 
-  updateOne = async (req: Request, res: Response, next: NextFunction) => {
+  updateOne = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+    session?: mongoose.ClientSession,
+  ) => {
     try {
       const { id } = req.params;
-      const document = await this.model.findByIdAndUpdate(id, req.body, {
-        new: true,
-        runValidators: true,
-      });
+      const document = await this.model
+        .findByIdAndUpdate(id, req.body, {
+          new: true,
+          runValidators: true,
+        })
+        .session(session as mongoose.ClientSession);
 
       if (!document) {
         return next(new AppError("Document not found!", 404));
@@ -49,13 +63,18 @@ class BaseController<T extends Document> {
     }
   };
 
-  createOne = async (req: Request, res: Response, next: NextFunction) => {
+  createOne = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+    session?: mongoose.ClientSession,
+  ) => {
     try {
-      const newDocument = await this.model.create(req.body);
+      const newDocument = await this.model.create([req.body], { session });
 
       res.status(201).json({
         status: "success",
-        data: newDocument,
+        data: newDocument[0],
       });
     } catch (error) {
       next(error);
@@ -63,11 +82,18 @@ class BaseController<T extends Document> {
   };
 
   getOne = (populateOptions?: PopulateOptions) => {
-    return async (req: Request, res: Response, next: NextFunction) => {
+    return async (
+      req: Request,
+      res: Response,
+      next: NextFunction,
+      session?: mongoose.ClientSession,
+    ) => {
       try {
         const { id } = req.params;
 
-        let query = this.model.findById(id);
+        let query = this.model
+          .findById(id)
+          .session(session as mongoose.ClientSession);
 
         if (populateOptions) query = query.populate(populateOptions);
 
@@ -88,7 +114,12 @@ class BaseController<T extends Document> {
   };
 
   getAll = (additionalData?: Record<string, any>) => {
-    return async (req: Request, res: Response, next: NextFunction) => {
+    return async (
+      req: Request,
+      res: Response,
+      next: NextFunction,
+      session?: mongoose.ClientSession,
+    ) => {
       try {
         const features = new APIFeatures(this.model.find(), req.query)
           .filter()
@@ -96,7 +127,9 @@ class BaseController<T extends Document> {
           .limitFields()
           .paginate();
 
-        const documents = await features.query;
+        const documents = await features.query.session(
+          session as mongoose.ClientSession,
+        );
         res.status(200).json({
           status: "success",
           results: documents.length,
