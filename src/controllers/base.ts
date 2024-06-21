@@ -10,90 +10,77 @@ class BaseController<T extends Document> {
     this.model = model;
   }
 
-  deleteOne = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-    session?: mongoose.ClientSession,
-  ) => {
-    try {
-      const { id } = req.params;
-      const document = await this.model
-        .findByIdAndDelete(id)
-        .session(session as mongoose.ClientSession);
+  deleteOne = (session?: mongoose.ClientSession) => {
+    return async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { id } = req.params;
+        const document = await this.model
+          .findByIdAndDelete(id)
+          .session(session || null);
 
-      if (!document) {
-        return next(new AppError("Document not found!", 404));
+        if (!document) {
+          return next(new AppError("Document not found!", 404));
+        }
+
+        res.status(204).json({
+          status: "success",
+          message: "Document deleted successfully",
+        });
+      } catch (error) {
+        next(error);
       }
-
-      res.status(204).json({
-        status: "success",
-        message: "Document deleted successfully",
-      });
-    } catch (error) {
-      next(error);
-    }
+    };
   };
 
-  updateOne = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-    session?: mongoose.ClientSession,
-  ) => {
-    try {
-      const { id } = req.params;
-      const document = await this.model
-        .findByIdAndUpdate(id, req.body, {
-          new: true,
-          runValidators: true,
-        })
-        .session(session as mongoose.ClientSession);
+  updateOne = (session?: mongoose.ClientSession) => {
+    return async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { id } = req.params;
+        const document = await this.model
+          .findByIdAndUpdate(id, req.body, {
+            new: true,
+            runValidators: true,
+          })
+          .session(session || null);
 
-      if (!document) {
-        return next(new AppError("Document not found!", 404));
+        if (!document) {
+          return next(new AppError("Document not found!", 404));
+        }
+
+        res.status(200).json({
+          status: "success",
+          data: document,
+        });
+      } catch (error) {
+        next(error);
       }
-
-      res.status(200).json({
-        status: "success",
-        data: document,
-      });
-    } catch (error) {
-      next(error);
-    }
+    };
   };
 
-  createOne = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
+  createOne = (session?: mongoose.ClientSession) => {
+    return async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const newDocument = await this.model.create([req.body], { session });
+
+        res.status(201).json({
+          status: "success",
+          data: newDocument[0],
+        });
+      } catch (error) {
+        next(error);
+      }
+    };
+  };
+
+  getOne = (
+    populateOptions?: PopulateOptions,
     session?: mongoose.ClientSession,
   ) => {
-    try {
-      const newDocument = await this.model.create([req.body], { session });
-
-      res.status(201).json({
-        status: "success",
-        data: newDocument[0],
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  getOne = (populateOptions?: PopulateOptions) => {
-    return async (
-      req: Request,
-      res: Response,
-      next: NextFunction,
-      session?: mongoose.ClientSession,
-    ) => {
+    return async (req: Request, res: Response, next: NextFunction) => {
       try {
         const { id } = req.params;
 
-        let query = this.model
-          .findById(id)
-          .session(session as mongoose.ClientSession);
+        let query = this.model.findById(id).session(session || null);
 
         if (populateOptions) query = query.populate(populateOptions);
 
@@ -113,13 +100,11 @@ class BaseController<T extends Document> {
     };
   };
 
-  getAll = (additionalData?: Record<string, any>) => {
-    return async (
-      req: Request,
-      res: Response,
-      next: NextFunction,
-      session?: mongoose.ClientSession,
-    ) => {
+  getAll = (
+    additionalData?: Record<string, any>,
+    session?: mongoose.ClientSession,
+  ) => {
+    return async (req: Request, res: Response, next: NextFunction) => {
       try {
         const features = new APIFeatures(this.model.find(), req.query)
           .filter()
@@ -127,9 +112,7 @@ class BaseController<T extends Document> {
           .limitFields()
           .paginate();
 
-        const documents = await features.query.session(
-          session as mongoose.ClientSession,
-        );
+        const documents = await features.query.session(session || null);
         res.status(200).json({
           status: "success",
           results: documents.length,
