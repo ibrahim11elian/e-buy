@@ -4,6 +4,7 @@ import cartRouter from "./cart-routes";
 import orderRouter from "./order-routes";
 import profileRouter from "./profile-routes";
 import addressRouter from "./address-routes";
+import favoritesRouter from "./favorites-routes";
 import UserController from "../controllers/user";
 
 const router = Router({
@@ -16,6 +17,7 @@ router.use("/cart", cartRouter);
 router.use("/orders", orderRouter);
 router.use("/profile", profileRouter);
 router.use("/address", addressRouter);
+router.use("/favorites", favoritesRouter);
 
 // user routes
 router.post("/signup", auth.signup);
