@@ -246,9 +246,6 @@ class OrderController extends BaseController<IOrder> {
       if (!req.body.status) {
         return next(new AppError("status required", 400));
       }
-      for (const i in req.body) {
-        if (i !== "status") delete req.body[i];
-      }
 
       const order = await Order.findById(id)
         .populate({
@@ -271,6 +268,15 @@ class OrderController extends BaseController<IOrder> {
         return next(
           new AppError(`The order status is already ${req.body.status}`, 400),
         );
+      }
+
+      // Update the payment status if the order Delivered and the method is Cash On Delivery
+      if (req.body.status === "Delivered") {
+        order.paymentStatus = true;
+      }
+
+      if (req.body.status === "Shipped") {
+        order.shippedAt = new Date(Date.now());
       }
 
       order.status = req.body.status;
