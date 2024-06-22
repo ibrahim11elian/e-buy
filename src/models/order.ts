@@ -15,6 +15,7 @@ export interface IOrder extends Document {
   paymentStatus?: boolean;
   status?: string;
   currency?: string;
+  shippedAt: Date;
 }
 
 interface IOrderModel extends Model<IOrder> {}
@@ -80,6 +81,7 @@ const orderSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    shippedAt: Date,
   },
   {
     timestamps: true,
