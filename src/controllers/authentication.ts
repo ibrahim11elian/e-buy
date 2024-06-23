@@ -6,6 +6,8 @@ import User from "../models/user/user";
 import AppError from "../utils/error";
 import Email from "../utils/email";
 import mongoose from "mongoose";
+import RefreshToken from "../models/tokens";
+import { promisify } from "util";
 interface JwtPayload {
   id: string;
   iat: number;
@@ -66,23 +68,83 @@ class Authentication {
   login = async (req: Request, res: Response) => {
     const { user } = req;
 
-    const token = this.generateToken({ id: user?._id });
+    // Generate JWT
+    const accessToken = this.generateToken(
+      { id: user._id },
+      process.env.JWT_SECRET as string,
+      process.env.JWT_EXPIRES_IN as string,
+    );
+    const refreshToken = this.generateToken(
+      { id: user._id },
+      process.env.JWT_REFRESH_SECRET as string,
+      process.env.JWT_REFRESH_EXPIRES_IN as string,
+    );
 
-    this.sendTokenCookie(token, req, res);
+    await RefreshToken.create({
+      refreshToken,
+      user: user._id,
+    });
+
+    this.sendTokenCookie(accessToken, req, res);
 
     res.status(200).json({
       status: "success",
       message: "Logged in successfully",
-      accessToken: token,
+      accessToken,
+      refreshToken,
     });
   };
 
-  logout = async (req: Request, res: Response) => {
-    res.clearCookie("jwt");
+  logout = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { refreshToken } = req.body;
+      if (!refreshToken) {
+        return next(new AppError("Refresh token is missing", 400));
+      }
 
-    res.status(200).json({
-      status: "success",
-    });
+      await this.verifyToken(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET as string,
+      );
+
+      await RefreshToken.findOneAndDelete({ refreshToken });
+
+      res.clearCookie("jwt");
+
+      res.status(204).json({
+        status: "success",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  logoutAll = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { refreshToken } = req.body;
+
+      if (!refreshToken) {
+        return next(new AppError("Refresh token required", 400));
+      }
+
+      // Verify refresh token
+      const { id } = await this.verifyToken(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET as string,
+      );
+
+      // Delete all refresh tokens corresponded to this user
+      await RefreshToken.deleteMany({ user: id });
+
+      res.clearCookie("jwt");
+
+      res.status(204).json({
+        status: "success",
+        message: "Logged out successfully from all devices.",
+      });
+    } catch (error) {
+      next(error);
+    }
   };
 
   validateLoginAttempt = async (
@@ -159,21 +221,27 @@ class Authentication {
     }
   };
 
-  generateToken(data: any) {
-    const expiresIn = process.env.JWT_EXPIRES_IN as string;
-
+  generateToken(data: any, secret: string, expiresIn: string) {
     // Ensure expiresIn is correctly interpreted as a string or number
     const expiresInValue = isNaN(expiresIn as unknown as number)
       ? expiresIn
       : parseInt(expiresIn, 10);
 
-    return jwt.sign(data, process.env.JWT_SECRET as string, {
+    return jwt.sign(data, secret, {
       expiresIn: expiresInValue,
     });
   }
 
-  verifyToken(token: string) {
-    return jwt.verify(token, process.env.JWT_SECRET as string) as JwtPayload;
+  async verifyToken(token: string, secret: string): Promise<JwtPayload> {
+    return new Promise((resolve, reject) => {
+      jwt.verify(token, secret, (err, decoded) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(decoded as JwtPayload);
+        }
+      });
+    });
   }
 
   sendTokenCookie = (token: string, req: Request, res: Response) => {
@@ -184,12 +252,60 @@ class Authentication {
 
     res.cookie("jwt", token, {
       // Set the cookie to expire in the specified time
-      expires: new Date(Date.now() + cookieExpiresIn * 24 * 60 * 60 * 1000),
+      expires: new Date(Date.now() + cookieExpiresIn * 60 * 1000),
       // Send it in secure connection only (https)
       //   secure: req.secure || req.headers["x-forwarded-proto"] === "https",
       // This will make it inaccessible from the browser
       httpOnly: true,
     });
+  };
+
+  // Refresh Token middleware
+  refreshToken = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { refreshToken } = req.body;
+      if (!refreshToken) {
+        return next(new AppError("refresh token is required.", 401));
+      }
+
+      const token = await RefreshToken.findOne({ refreshToken });
+      if (!token) {
+        return next(new AppError("refresh token is invalid.", 401));
+      }
+
+      // Verify the refresh token
+      await this.verifyToken(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET as string,
+      );
+
+      const accessToken = this.generateToken(
+        { id: token.user },
+        process.env.JWT_SECRET as string,
+        process.env.JWT_EXPIRES_IN as string,
+      );
+
+      // Create a new refresh token
+      const newRefreshToken = this.generateToken(
+        { id: token.user },
+        process.env.JWT_REFRESH_SECRET as string,
+        process.env.JWT_REFRESH_EXPIRES_IN as string,
+      );
+
+      // Update the refresh token in the database
+      token.refreshToken = newRefreshToken;
+      await token.save();
+
+      // Send the new access token and refresh token
+      this.sendTokenCookie(accessToken, req, res);
+      res.status(200).json({
+        status: "success",
+        accessToken,
+        refreshToken: newRefreshToken,
+      });
+    } catch (error) {
+      next(error);
+    }
   };
 
   // middleware to check if the user is authenticated
@@ -217,7 +333,10 @@ class Authentication {
       }
 
       // check if the user exists
-      const { id, iat } = this.verifyToken(token);
+      const { id, iat } = await this.verifyToken(
+        token,
+        process.env.JWT_SECRET as string,
+      );
       const user = await User.findById(id).select("+isVerified");
       if (!user) {
         return next(
@@ -231,7 +350,7 @@ class Authentication {
       if (!user.isVerified) {
         return next(
           new AppError(
-            "You account is not verified, please check your email for verification link. ",
+            "You account is not verified, please check your email for verification link.",
             401,
           ),
         );
@@ -287,14 +406,18 @@ class Authentication {
       // do not forget that we have a middleware that take care of hashing the password for us
       await user?.save();
 
-      const token = this.generateToken({ id: user._id });
+      const accessToken = this.generateToken(
+        { id: user?._id },
+        process.env.JWT_SECRET as string,
+        process.env.JWT_EXPIRES_IN as string,
+      );
 
-      this.sendTokenCookie(token, req, res);
+      this.sendTokenCookie(accessToken, req, res);
 
       res.status(200).json({
         status: "success",
         message: "Password updated successfully",
-        token,
+        accessToken,
       });
     } catch (error) {
       next(error);
@@ -381,14 +504,18 @@ class Authentication {
       await user.save();
 
       // send jwt token to the user
-      const newToken = this.generateToken({ id: user._id });
+      const accessToken = this.generateToken(
+        { id: user?._id },
+        process.env.JWT_SECRET as string,
+        process.env.JWT_EXPIRES_IN as string,
+      );
 
-      this.sendTokenCookie(newToken, req, res);
+      this.sendTokenCookie(accessToken, req, res);
 
       res.status(200).json({
         status: "success",
         message: "the password was reset successfully",
-        token: newToken,
+        accessToken,
       });
     } catch (error) {
       next(error);
