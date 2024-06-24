@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import mongoose, { Document, Model, PopulateOptions } from "mongoose";
-import AppError from "../utils/error";
-import { APIFeatures } from "../utils/api-features";
+import AppError from "../../utils/error";
+import { APIFeatures } from "../../utils/api-features";
 
 class BaseController<T extends Document> {
   private model: Model<T>;

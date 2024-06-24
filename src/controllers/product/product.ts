@@ -1,12 +1,12 @@
 import { NextFunction, Request, Response, Express } from "express";
 import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
 import { v4 as uuidv4 } from "uuid";
-import Product, { IProduct } from "../models/product/product";
-import Uploader from "../utils/uploader";
-import BaseController from "./base";
-import AppError from "../utils/error";
+import Product, { IProduct } from "../../models/product/product";
+import Uploader from "../../utils/uploader";
+import BaseController from "../helpers/base";
+import AppError from "../../utils/error";
 import sharp from "sharp";
-import uploadImage from "../utils/cloudinary-controller";
+import uploadImage from "../../utils/cloudinary-controller";
 
 // Extend Express.Multer.File to allow partial modification
 interface ModifiedFile extends Partial<Express.Multer.File> {

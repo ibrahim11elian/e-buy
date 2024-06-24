@@ -1,6 +1,6 @@
 import { Router } from "express";
-import Authentication from "../controllers/authentication";
-import AddressController from "../controllers/address";
+import Authentication from "../../controllers/helpers/authentication";
+import AddressController from "../../controllers/user/address";
 
 const router = Router({
   mergeParams: true,

@@ -1,8 +1,8 @@
 /* eslint-disable no-unused-vars */
 import { Request, Response, NextFunction } from "express";
-import User, { IUser } from "../models/user/user";
-import BaseController from "./base";
-import AppError from "../utils/error";
+import User, { IUser } from "../../models/user/user";
+import BaseController from "../helpers/base";
+import AppError from "../../utils/error";
 
 class UserController extends BaseController<IUser> {
   constructor() {

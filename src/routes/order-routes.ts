@@ -1,5 +1,5 @@
 import { Router } from "express";
-import Authentication from "../controllers/authentication";
+import Authentication from "../controllers/helpers/authentication";
 import Order from "../controllers/order";
 
 const router = Router({

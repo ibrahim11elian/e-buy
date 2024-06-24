@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import Stripe from "stripe";
 import Order, { IOrder } from "../models/order";
-import BaseController from "./base";
+import BaseController from "./helpers/base";
 import Cart, { ICart } from "../models/cart";
 import AppError from "../utils/error";
 import mongoose, { ClientSession } from "mongoose";

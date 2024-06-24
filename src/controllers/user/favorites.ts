@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from "express";
-import BaseController from "./base";
+import BaseController from "../helpers/base";
 import mongoose from "mongoose";
-import Favorite, { IFavorites } from "../models/user/favorites";
-import AppError from "../utils/error";
+import Favorite, { IFavorites } from "../../models/user/favorites";
+import AppError from "../../utils/error";
 
 class FavoritesController extends BaseController<IFavorites> {
   constructor() {

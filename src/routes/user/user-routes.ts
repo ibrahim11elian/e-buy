@@ -1,11 +1,11 @@
 import { Router } from "express";
-import Authentication from "../controllers/authentication";
-import cartRouter from "./cart-routes";
-import orderRouter from "./order-routes";
+import Authentication from "../../controllers/helpers/authentication";
+import cartRouter from "../cart-routes";
+import orderRouter from "../order-routes";
 import profileRouter from "./profile-routes";
 import addressRouter from "./address-routes";
 import favoritesRouter from "./favorites-routes";
-import UserController from "../controllers/user";
+import UserController from "../../controllers/user/user";
 
 const router = Router({
   mergeParams: true,

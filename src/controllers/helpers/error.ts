@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import { Request, Response, NextFunction } from "express";
-import AppError from "../utils/error";
+import AppError from "../../utils/error";
 import { MongooseError } from "mongoose";
 
 /** Global error handling middleware for sending the error in both development and production */

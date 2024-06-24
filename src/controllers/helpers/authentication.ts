@@ -2,11 +2,11 @@
 import crypto from "crypto";
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import User from "../models/user/user";
-import AppError from "../utils/error";
-import Email from "../utils/email";
+import User from "../../models/user/user";
+import AppError from "../../utils/error";
+import Email from "../../utils/email";
 import mongoose from "mongoose";
-import RefreshToken from "../models/tokens";
+import RefreshToken from "../../models/tokens";
 import { promisify } from "util";
 interface JwtPayload {
   id: string;

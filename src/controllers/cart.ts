@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import Cart, { ICart } from "../models/cart";
 import Product from "../models/product/product";
 import AppError from "../utils/error";
-import BaseController from "./base";
+import BaseController from "./helpers/base";
 
 class CartController extends BaseController<ICart> {
   constructor() {

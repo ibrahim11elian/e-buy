@@ -1,6 +1,6 @@
 import { Router } from "express";
-import Authentication from "../controllers/authentication";
-import FavoritesController from "../controllers/favorites";
+import Authentication from "../../controllers/helpers/authentication";
+import FavoritesController from "../../controllers/user/favorites";
 
 const router = Router({
   mergeParams: true,

@@ -8,7 +8,7 @@ import morgan from "morgan";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
-import errorHandler from "./controllers/error";
+import errorHandler from "./controllers/helpers/error";
 import AppError from "./utils/error";
 import {
   adminRouter,

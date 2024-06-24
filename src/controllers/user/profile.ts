@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from "express";
-import Profile, { IProfile } from "../models/user/profile";
-import BaseController from "./base";
-import uploadImage from "../utils/cloudinary-controller";
+import Profile, { IProfile } from "../../models/user/profile";
+import BaseController from "../helpers/base";
+import uploadImage from "../../utils/cloudinary-controller";
 import sharp from "sharp";
-import Uploader from "../utils/uploader";
+import Uploader from "../../utils/uploader";
 import { UploadApiResponse } from "cloudinary";
 
 class ProfileController extends BaseController<IProfile> {

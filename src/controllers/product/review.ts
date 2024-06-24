@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from "express";
-import Review, { IReview } from "../models/product/reviews";
-import BaseController from "./base";
-import AppError from "../utils/error";
-import Product from "../models/product/product";
-import Order from "../models/order";
+import Review, { IReview } from "../../models/product/reviews";
+import BaseController from "../helpers/base";
+import AppError from "../../utils/error";
+import Product from "../../models/product/product";
+import Order from "../../models/order";
 
 class ReviewsController extends BaseController<IReview> {
   constructor() {

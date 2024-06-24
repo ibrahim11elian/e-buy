@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from "express";
-import Address, { IAddress } from "../models/user/address";
-import BaseController from "./base";
+import Address, { IAddress } from "../../models/user/address";
+import BaseController from "../helpers/base";
 import mongoose from "mongoose";
-import User from "../models/user/user";
+import User from "../../models/user/user";
 
 class AddressController extends BaseController<IAddress> {
   constructor() {
