@@ -10,6 +10,7 @@ export interface IProduct extends Document {
   stockQuantity: number;
   ratingsAverage: number;
   numOfReviews: number;
+  cloudinaryPublicId: string;
 }
 
 const productSchema: Schema<IProduct> = new mongoose.Schema(
@@ -54,6 +55,10 @@ const productSchema: Schema<IProduct> = new mongoose.Schema(
     numOfReviews: {
       type: Number,
       default: 0,
+    },
+    cloudinaryPublicId: {
+      type: String,
+      select: false,
     },
   },
   {
