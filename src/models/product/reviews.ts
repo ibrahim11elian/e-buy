@@ -44,6 +44,8 @@ const reviewsSchema: Schema<IReview> = new mongoose.Schema(
   },
 );
 
+reviewsSchema.index({ createdAt: -1 });
+
 reviewsSchema.pre(/^find/, function (next) {
   this.populate([
     {
