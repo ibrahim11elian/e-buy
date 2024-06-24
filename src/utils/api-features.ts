@@ -15,19 +15,29 @@ export class APIFeatures<T> {
     this.query = query;
     this.queryString = queryString;
   }
-  filter() {
+  filter(enableSearch?: boolean) {
     // build the query
     const queryObj = { ...this.queryString };
     const excludedFields = ["page", "sort", "limit", "fields"];
 
     excludedFields.forEach((el) => delete queryObj[el]);
 
-    // if the user want to use any filter operations
-    let queryStr = JSON.stringify(queryObj);
-    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (s) => `$${s}`);
+    if (enableSearch && queryObj.search) {
+      this.query
+        .find(
+          { $text: { $search: queryObj.search } },
+          { score: { $meta: "textScore" } }, // Including text score in the result
+        )
+        .sort({ score: { $meta: "textScore" } }); // Sorting by text score
+    } else {
+      // if the user want to use any filter operations
+      let queryStr = JSON.stringify(queryObj);
+      queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (s) => `$${s}`);
 
-    // we do not use await here so we can use additional functionality on it later for ex if there is a sort or a pagination
-    this.query.find(JSON.parse(queryStr));
+      // we do not use await here so we can use additional functionality on it later for ex if there is a sort or a pagination
+
+      this.query.find(JSON.parse(queryStr));
+    }
 
     return this;
   }
@@ -61,8 +71,12 @@ export class APIFeatures<T> {
   paginate() {
     // add pagination (if the user did not specify a page it will return first 100 documents)
     // convert to number
-    const page = this.queryString.page ? parseInt(this.queryString.page, 10) : 1;
-    const limit = this.queryString.limit ? parseInt(this.queryString.limit, 10) : 100;
+    const page = this.queryString.page
+      ? parseInt(this.queryString.page, 10)
+      : 1;
+    const limit = this.queryString.limit
+      ? parseInt(this.queryString.limit, 10)
+      : 100;
     const skip = (page - 1) * limit;
     this.query = this.query.skip(skip).limit(limit);
 
