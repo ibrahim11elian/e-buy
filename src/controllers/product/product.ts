@@ -32,7 +32,7 @@ class ProductController extends BaseController<IProduct> {
       next(error);
     }
   };
-  getProducts = this.getAll();
+  getProducts = this.getAll(undefined, undefined, true); // enabling search to accept search text query
   getProduct = this.getOne();
   updateProduct = async (req: Request, res: Response, next: NextFunction) => {
     try {
