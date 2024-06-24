@@ -22,6 +22,9 @@ const logger_1 = __importDefault(require("./utils/logger"));
 const cloudinary_config_1 = __importDefault(require("./utils/cloudinary-config"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
+// this prevent the rate limiter effectively a global one and blocking all requests once the limit is reached (and this solve this issue)
+// Where numberOfProxies (in this case 3) is the number of proxies between the user and the server(in this case vercel).
+app.set("trust proxy", 3);
 // Middlewares
 // set security http headers
 app.use((0, helmet_1.default)());

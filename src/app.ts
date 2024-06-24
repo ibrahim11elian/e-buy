@@ -26,6 +26,10 @@ import cloudinaryConfig from "./utils/cloudinary-config";
 dotenv.config();
 const app: express.Application = express();
 
+// this prevent the rate limiter effectively a global one and blocking all requests once the limit is reached (and this solve this issue)
+// Where numberOfProxies (in this case 3) is the number of proxies between the user and the server(in this case vercel).
+app.set("trust proxy", 3);
+
 // Middlewares
 // set security http headers
 app.use(helmet());
