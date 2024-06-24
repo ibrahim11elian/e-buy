@@ -8,10 +8,11 @@ const router = Router({
 const auth = new Authentication();
 const profile = new ProfileController();
 
-router
-  .route("/")
-  .all(auth.protect)
-  .get(profile.getProfile)
-  .patch(profile.updateProfile);
+router.route("/").all(auth.protect).get(profile.getProfile).patch(
+  profile.uploadUserPhoto,
+  profile.resizeUserPhoto,
+  profile.handleUploadUserImage, // upload to cloudinary
+  profile.updateProfile,
+);
 
 export default router;
