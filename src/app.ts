@@ -21,6 +21,7 @@ import {
 import OrderController from "./controllers/order";
 import sanitizeInput from "./utils/snitize-input";
 import logger from "./utils/logger";
+import cloudinaryConfig from "./utils/cloudinary-config";
 
 dotenv.config();
 const app: express.Application = express();
@@ -92,6 +93,9 @@ app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: false, limit: "10kb" }));
 // cookie parser
 app.use(cookieParser());
+
+// configure cloudinary
+cloudinaryConfig();
 
 app.get("/", (req: Request, res: Response) => {
   res.send("<h1>Welcome To E-Buy API</h1>");
