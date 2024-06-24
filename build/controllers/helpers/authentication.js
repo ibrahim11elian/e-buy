@@ -161,7 +161,7 @@ class Authentication {
                 // Set the cookie to expire in the specified time
                 expires: new Date(Date.now() + cookieExpiresIn * 60 * 1000),
                 // Send it in secure connection only (https)
-                //   secure: req.secure || req.headers["x-forwarded-proto"] === "https",
+                secure: req.secure || req.headers["x-forwarded-proto"] === "https",
                 // This will make it inaccessible from the browser
                 httpOnly: true,
             });
