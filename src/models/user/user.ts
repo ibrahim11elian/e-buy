@@ -130,6 +130,8 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
   },
 );
 
+userSchema.index({ createdAt: -1 });
+
 userSchema.pre("save", async function (next) {
   const user = this;
   if (!user.isNew) return next();

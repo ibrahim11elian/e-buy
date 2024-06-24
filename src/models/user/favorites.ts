@@ -8,6 +8,7 @@ const favoriteSchema: Schema<IFavorites> = new mongoose.Schema<IFavorites>(
   {
     _id: {
       type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       auto: false,
     },
     products: [
@@ -21,6 +22,8 @@ const favoriteSchema: Schema<IFavorites> = new mongoose.Schema<IFavorites>(
     timestamps: true,
   },
 );
+
+favoriteSchema.index({ createdAt: 1 });
 
 const Favorite: Model<IFavorites> = mongoose.model<IFavorites>(
   "Favorite",

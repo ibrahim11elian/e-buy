@@ -66,6 +66,13 @@ const productSchema: Schema<IProduct> = new mongoose.Schema(
   },
 );
 
+productSchema.index({ name: 1 });
+productSchema.index({ category: 1 });
+productSchema.index({ price: 1 });
+productSchema.index({ createdAt: -1 });
+// Adding a text index for full-text search on the name and description fields
+productSchema.index({ name: "text", description: "text" });
+
 const Product: Model<IProduct> = mongoose.model<IProduct>(
   "Product",
   productSchema,

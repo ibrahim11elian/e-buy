@@ -12,6 +12,7 @@ const addressSchema: Schema<IAddress> = new mongoose.Schema<IAddress>(
   {
     _id: {
       type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       auto: false,
     },
     addressLine: {

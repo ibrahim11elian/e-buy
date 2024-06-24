@@ -6,7 +6,7 @@ import User from "../../models/user/user";
 import AppError from "../../utils/error";
 import Email from "../../utils/email";
 import mongoose from "mongoose";
-import RefreshToken from "../../models/tokens";
+import RefreshToken from "../../models/user/tokens";
 import { promisify } from "util";
 interface JwtPayload {
   id: string;

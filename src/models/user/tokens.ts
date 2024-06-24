@@ -17,6 +17,9 @@ const tokensSchema: Schema<IToken> = new Schema<IToken>({
   },
 });
 
+tokensSchema.index({ user: 1 });
+tokensSchema.index({ refreshToken: 1 });
+
 const RefreshToken: Model<IToken> = mongoose.model<IToken>(
   "Token",
   tokensSchema,
