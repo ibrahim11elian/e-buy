@@ -4,19 +4,19 @@ import Order from "../models/order";
 class Dashboard {
   getSales = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const sales = await Order.aggregate([
+      const salesData = await Order.aggregate([
         {
           $match: {
-            status: "Delivered",
+            paymentStatus: true,
           },
         },
         {
           $group: {
             _id: null,
-            completedOrders: {
+            numOrders: {
               $sum: 1,
             },
-            totalSales: {
+            totalRevenue: {
               $sum: "$totalAmount",
             },
             avgOrderValue: {
@@ -31,9 +31,23 @@ class Dashboard {
         },
       ]);
 
+      if (salesData.length === 0) {
+        return res.status(404).json({ error: "No sales data found" });
+      }
+
+      // Extract metrics from aggregation result
+      const { totalRevenue, avgOrderValue, numOrders } = salesData[0];
+
+      // Prepare response
+      const salesOverview = {
+        totalRevenue,
+        avgOrderValue,
+        numOrders,
+      };
+
       res.status(200).json({
         status: "success",
-        data: sales,
+        data: salesOverview,
       });
     } catch (error) {
       next(error);
@@ -46,7 +60,7 @@ class Dashboard {
     next: NextFunction,
   ) => {
     try {
-      const data = await Order.aggregate([
+      const topProducts = await Order.aggregate([
         {
           $unwind: "$orderItems",
         },
@@ -80,17 +94,6 @@ class Dashboard {
         { $project: { _id: 0 } },
       ]);
 
-      res.status(200).json({
-        status: "success",
-        data,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  getDailySales = async (req: Request, res: Response, next: NextFunction) => {
-    try {
       const dailySales = await Order.aggregate([
         {
           $unwind: "$orderItems",
@@ -114,7 +117,7 @@ class Dashboard {
 
       res.status(200).json({
         status: "success",
-        data: dailySales,
+        data: { dailySales, topProducts },
       });
     } catch (error) {
       next(error);
@@ -158,13 +161,9 @@ class Dashboard {
     }
   };
 
-  getOrdersStatusData = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ) => {
+  getOrdersStats = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const data = await Order.aggregate([
+      const orderStatus = await Order.aggregate([
         {
           $group: {
             _id: "$status",
@@ -175,22 +174,7 @@ class Dashboard {
         { $project: { _id: 0 } },
       ]);
 
-      res.status(200).json({
-        status: "success",
-        data,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  getOrderFulfillmentEfficiency = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ) => {
-    try {
-      const data = await Order.aggregate([
+      const orderFulfillmentEfficiency = await Order.aggregate([
         {
           $project: {
             orderProcessingTime: { $subtract: ["$shippedAt", "$createdAt"] },
@@ -214,20 +198,20 @@ class Dashboard {
 
       res.status(200).json({
         status: "success",
-        data,
+        data: { orderStatus, orderFulfillmentEfficiency },
       });
     } catch (error) {
       next(error);
     }
   };
 
-  getTopCategorySales = async (
+  getRevenueMetrics = async (
     req: Request,
     res: Response,
     next: NextFunction,
   ) => {
     try {
-      const data = await Order.aggregate([
+      const categoryRevenue = await Order.aggregate([
         {
           $unwind: "$orderItems",
         },
@@ -259,18 +243,7 @@ class Dashboard {
         { $project: { _id: 0 } },
       ]);
 
-      res.status(200).json({
-        status: "success",
-        data,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  getMonthlySales = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const dailySales = await Order.aggregate([
+      const monthlySales = await Order.aggregate([
         {
           $addFields: {
             yearMonth: {
@@ -291,7 +264,7 @@ class Dashboard {
 
       res.status(200).json({
         status: "success",
-        data: dailySales,
+        data: { categoryRevenue, monthlySales },
       });
     } catch (error) {
       next(error);
