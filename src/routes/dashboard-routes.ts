@@ -11,15 +11,9 @@ const dashboard = new Dashboard();
 router.use(auth.protect, auth.restrictTo("admin"));
 
 router.get("/sales", dashboard.getSales);
-router.get("/product-sales", dashboard.getTopProductSales);
-router.get("/category-sales", dashboard.getTopCategorySales);
-router.get("/daily-sales", dashboard.getDailySales);
-router.get("/monthly-sales", dashboard.getMonthlySales);
-router.get("/user-registrations", dashboard.getUserRegistrationsData);
-router.get("/order-status", dashboard.getOrdersStatusData);
-router.get(
-  "/order-fulfillment-efficiency",
-  dashboard.getOrderFulfillmentEfficiency,
-);
+router.get("/products", dashboard.getTopProductSales);
+router.get("/users", dashboard.getUserRegistrationsData);
+router.get("/orders", dashboard.getOrdersStats);
+router.get("/revenue", dashboard.getRevenueMetrics);
 
 export default router;
