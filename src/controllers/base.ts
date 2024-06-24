@@ -57,7 +57,10 @@ class BaseController<T extends Document> {
     };
   };
 
-  createOne = (fieldsToExclude: string[], session?: mongoose.ClientSession) => {
+  createOne = (
+    fieldsToExclude?: string[],
+    session?: mongoose.ClientSession,
+  ) => {
     return async (req: Request, res: Response, next: NextFunction) => {
       try {
         const newDocument = await this.model.create([req.body], { session });
@@ -66,7 +69,7 @@ class BaseController<T extends Document> {
           string,
           any
         >;
-        if (fieldsToExclude.length) {
+        if (fieldsToExclude && fieldsToExclude.length) {
           // Transform the document before sending as response
           fieldsToExclude.forEach((field) => {
             delete transformedData[field];
