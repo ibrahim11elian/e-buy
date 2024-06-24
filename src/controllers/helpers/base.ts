@@ -117,11 +117,12 @@ class BaseController<T extends Document> {
   getAll = (
     additionalData?: Record<string, any>,
     session?: mongoose.ClientSession,
+    enableSearch: boolean = false,
   ) => {
     return async (req: Request, res: Response, next: NextFunction) => {
       try {
         const features = new APIFeatures(this.model.find(), req.query)
-          .filter()
+          .filter(enableSearch)
           .sort()
           .limitFields()
           .paginate();
